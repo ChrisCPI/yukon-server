@@ -200,6 +200,14 @@
         "spawn": 0
     },
     {
+        "id": 812,
+        "name": "dojofire",
+        "member": 0,
+        "maxUsers": 80,
+        "game": 0,
+        "spawn": 0
+    },
+    {
         "id": 900,
         "name": "astro",
         "member": 0,

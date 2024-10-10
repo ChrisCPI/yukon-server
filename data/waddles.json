@@ -46,5 +46,29 @@
         "roomId": 320,
         "seats": 2,
         "game": "card"
+    },
+    {
+        "id": 300,
+        "roomId": 812,
+        "seats": 2,
+        "game": "fire"
+    },
+    {
+        "id": 301,
+        "roomId": 812,
+        "seats": 2,
+        "game": "fire"
+    },
+    {
+        "id": 302,
+        "roomId": 812,
+        "seats": 3,
+        "game": "fire"
+    },
+    {
+        "id": 303,
+        "roomId": 812,
+        "seats": 4,
+        "game": "fire"
     }
 ]
