@@ -368,6 +368,14 @@
         "spawn": 0
     },
     {
+        "id": 997,
+        "name": "fire",
+        "member": 0,
+        "maxUsers": 80,
+        "game": 1,
+        "spawn": 0
+    },
+    {
         "id": 998,
         "name": "card",
         "member": 0,
