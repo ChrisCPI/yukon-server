@@ -1,5 +1,11 @@
 import BaseInstance from '../BaseInstance'
 
+import Ninja from './ninja/Ninja'
+
+import { between } from '@utils/math'
+
+
+const defaultTiles = [0, 8, 4, 12]
 
 export default class FireInstance extends BaseInstance {
 
@@ -14,26 +20,33 @@ export default class FireInstance extends BaseInstance {
 
         this.rankSpeed = 1
 
-        this.itemAwards = [4025, 4026, 4027, 4028, 4029, 4030, 4031, 4032, 4033, 104]
+        this.board = ['b', 's', 'w', 'f', 'c',
+            's', 'f', 'w', 'b', 's',
+            'w', 'f', 'c', 'w', 's', 'f']
+
+        this.tileIds = [...defaultTiles]
+
+        this.itemAwards = [6025, 4120, 2013, 1086, 3032]
         this.postcardAwards = { 1: 177, 5: 178, 9: 179 }
+
+        this.currentNinja = null
+
+        this.tabId = null
 
         //this.handleSendDeal = this.handleSendDeal.bind(this)
         //this.handlePickCard = this.handlePickCard.bind(this)
     }
 
-    /*init() {
+    init() {
         super.init()
 
         for (let user of this.users) {
-            //this.ninjas[user.id] = new Ninja(user)
+            this.ninjas[user.id] = new Ninja(user, this)
+            this.ninjas[user.id].tile = defaultTiles[this.getSeat(user)]
         }
 
-        for (let user of this.users) {
-            let opponent = this.getOpponent(user)
-
-            if (opponent) this.ninjas[user.id].opponent = this.ninjas[opponent.id]
-        }
-    }*/
+        this.nextRound()
+    }
 
     addListeners(user) {
         //user.events.on('send_deal', this.handleSendDeal)
@@ -53,13 +66,47 @@ export default class FireInstance extends BaseInstance {
         let users = this.users.map(user => {
             return {
                 username: user.username,
-                color: user.color
+                color: user.color,
+                energy: this.ninjas[user.id].energy
             }
         })
 
         this.send('start_game', { users: users })
 
+        this.sendNextRound()
+
         super.start()
+    }
+
+    nextRound() {
+        const index = this.currentNinja ? this.getSeat(this.currentNinja.user) : 0
+        let nextNinja = (index + 1 >= Object.keys(this.ninjas).length) ? 0 : index + 1
+        this.currentNinja = Object.values(this.ninjas)[nextNinja]
+
+        this.tabId = null
+        this.spinAmount = between(1, 6)
+
+        const ninjaPosition = this.currentNinja.tile
+        this.moveClockwise = (ninjaPosition + this.spinAmount) % 16
+        this.moveCounterClockwise = (ninjaPosition - this.spinAmount) % 16
+
+        for (let ninja of Object.values(this.ninjas)) {
+            ninja.dealCards()
+        }
+    }
+
+    sendNextRound() {
+        for (let user of this.users) {
+            user.send('next_round', {
+                ninja: this.getSeat(this.currentNinja.user),
+                deck: this.ninjas[user.id].dealt,
+                spin: {
+                    amount: this.spinAmount,
+                    cw: this.moveClockwise,
+                    ccw: this.moveCounterClockwise
+                }
+            })
+        }
     }
 
 }
