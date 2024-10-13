@@ -64,10 +64,12 @@ export default class FireInstance extends BaseInstance {
 
     start() {
         let users = this.users.map(user => {
+            const ninja = this.ninjas[user.id]
             return {
                 username: user.username,
                 color: user.color,
-                energy: this.ninjas[user.id].energy
+                energy: ninja.energy,
+                tile: ninja.tile
             }
         })
 
