@@ -20,6 +20,8 @@ export default class Ninja {
         // Player has already dealt this turn
         this.hasDealt = false
 
+        this.hasSelectedSpinner = false
+
         if (user) this.setDeck()
     }
 

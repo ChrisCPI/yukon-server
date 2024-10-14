@@ -2,6 +2,8 @@ import BaseInstance from '../BaseInstance'
 
 import Ninja from './ninja/Ninja'
 
+import { hasProps, isInRange } from '@utils/validation'
+
 import { between } from '@utils/math'
 
 
@@ -33,7 +35,7 @@ export default class FireInstance extends BaseInstance {
 
         this.tabId = null
 
-        //this.handleSendDeal = this.handleSendDeal.bind(this)
+        this.handleSpinnerSelect = this.handleSpinnerSelect.bind(this)
         //this.handlePickCard = this.handlePickCard.bind(this)
     }
 
@@ -49,14 +51,14 @@ export default class FireInstance extends BaseInstance {
     }
 
     addListeners(user) {
-        //user.events.on('send_deal', this.handleSendDeal)
+        user.events.on('spinner_select', this.handleSpinnerSelect)
         //user.events.on('pick_card', this.handlePickCard)
 
         super.addListeners(user)
     }
 
     removeListeners(user) {
-        //user.events.off('send_deal', this.handleSendDeal)
+        user.events.off('spinner_select', this.handleSpinnerSelect)
         //user.events.off('pick_card', this.handlePickCard)
 
         super.removeListeners(user)
@@ -78,6 +80,28 @@ export default class FireInstance extends BaseInstance {
         this.sendNextRound()
 
         super.start()
+    }
+
+    handleSpinnerSelect(args, user) {
+        if (!hasProps(args, 'tabId')) {
+            return
+        }
+
+        if (this.getSeat(user) !== this.getSeat(this.currentNinja.user)) {
+            return
+        }
+
+        if (!isInRange(args.tabId, 1, 6)) {
+            return
+        }
+
+        if (this.currentNinja.hasSelectedSpinner) {
+            return
+        }
+
+        this.currentNinja.hasSelectedSpinner = true
+
+        this.send('spinner_select', { tabId: args.tabId })
     }
 
     nextRound() {
