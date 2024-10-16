@@ -39,6 +39,10 @@ export default class FireInstance extends BaseInstance {
             seats: []
         }
 
+        this.podium = new Array(this.users).fill(0)
+        this.finishPosition = this.users.length
+
+        this.handleNinjaReady = this.handleNinjaReady.bind(this)
         this.handleSpinnerSelect = this.handleSpinnerSelect.bind(this)
         this.handleBoardSelect = this.handleBoardSelect.bind(this)
         this.handlePickCard = this.handlePickCard.bind(this)
@@ -72,6 +76,7 @@ export default class FireInstance extends BaseInstance {
     }
 
     addListeners(user) {
+        user.events.on('ninja_ready', this.handleNinjaReady)
         user.events.on('spinner_select', this.handleSpinnerSelect)
         user.events.on('board_select', this.handleBoardSelect)
         user.events.on('pick_card', this.handlePickCard)
@@ -81,6 +86,7 @@ export default class FireInstance extends BaseInstance {
     }
 
     removeListeners(user) {
+        user.events.off('ninja_ready', this.handleNinjaReady)
         user.events.off('spinner_select', this.handleSpinnerSelect)
         user.events.off('board_select', this.handleBoardSelect)
         user.events.off('pick_card', this.handlePickCard)
@@ -105,6 +111,21 @@ export default class FireInstance extends BaseInstance {
         this.sendNextRound()
 
         super.start()
+    }
+
+    handleNinjaReady(args, user) {
+        if (this.battle.state !== 0) return
+
+        const ninja = this.ninjas[user.id]
+
+        if (ninja.readyForNext) return
+
+        ninja.readyForNext = true
+
+        if (Object.values(this.ninjas).every(n => n.readyForNext === true)) {
+            this.nextRound()
+            this.sendNextRound()
+        }
     }
 
     handleSpinnerSelect(args, user) {
@@ -218,6 +239,8 @@ export default class FireInstance extends BaseInstance {
 
         if (!isNumber(args.card)) return
 
+        if (!this.battle.seats.includes(this.getSeat(user))) return
+
         const ninja = this.ninjas[user.id]
 
         if (!ninja.isInDealt(args.card) || ninja.pick) return
@@ -233,6 +256,10 @@ export default class FireInstance extends BaseInstance {
         ninja.pickCard(args.card)
 
         this.send('opponent_pick_card', { seat: this.getNinjaSeat(ninja) }, user)
+
+        if (this.battle.seats.every(seat => this.getNinja(seat).pick !== null)) {
+            this.judgeBattle()
+        }
     }
 
     chooseOpponent(seat) {
@@ -243,6 +270,89 @@ export default class FireInstance extends BaseInstance {
 
     getNinjasOnTile(tile) {
         return Object.values(this.ninjas).filter(ninja => ninja.tile === tile)
+    }
+
+    judgeBattle() {
+        // Clear timeout
+        this.resolveBattle()
+
+        for (let ninja of Object.values(this.ninjas)) {
+            if (ninja.energy === 0) {
+                this.podium[this.getNinjaSeat(ninja)] = this.finishPosition
+                this.finishPosition -= 1
+            }
+        }
+
+        if (this.finishPosition === 1) {
+            const winnerSeat = this.podium.indexOf(0)
+            this.podium[winnerSeat] = 1
+        }
+
+        const data = this.battle.seats.map(seat => {
+            const ninja = this.getNinja(seat)
+            return {
+                seat: seat,
+                card: ninja.pick,
+                energy: ninja.energy,
+                state: ninja.state,
+            }
+        })
+
+        for (let ninja of Object.values(this.ninjas)) {
+            ninja.send('judge_battle', {
+                ninjas: data,
+                battleType: this.battle.element,
+                positions: this.podium
+            })
+
+            ninja.readyForNext = false
+
+            if (ninja.energy === 0 || this.finishPosition === 1) {
+                const playerFinish = this.podium[this.getNinjaSeat(ninja)]
+
+                // update progress
+
+                // remove penguin and send game over
+            }
+        }
+
+        this.battle.state = 0
+    }
+
+    resolveBattle() {
+        if (this.battle.type === 1) {
+            const cardValues = this.battle.seats.map(seat => {
+                const ninja = this.getNinja(seat)
+
+                if (ninja.pick.element == this.battle.element) {
+                    return ninja.pick.value
+                }
+
+                return 0
+            })
+
+            const highestValue = Math.max(...cardValues)
+            const isTie = cardValues.filter(v => v === highestValue).length >= 2
+
+            for (let seat of this.battle.seats) {
+                const ninja = this.getNinja(seat)
+                const card = ninja.pick
+
+                if (card.element !== this.battle.element) {
+                    ninja.state = 1
+                    ninja.energy -= 1
+                } else if (isTie && card.value === highestValue) {
+                    ninja.state = 2
+                } else if (card.value === highestValue) {
+                    ninja.state = 3
+                } else {
+                    ninja.state = 1
+                    ninja.energy -= 1
+                }
+            }
+        } else if (this.battle.state === 2) {
+            // Todo
+        }
     }
 
     nextRound() {
@@ -265,7 +375,7 @@ export default class FireInstance extends BaseInstance {
         }
 
         for (let ninja of Object.values(this.ninjas)) {
-            ninja.dealCards()
+            ninja.resetTurn()
         }
     }
 
@@ -273,7 +383,7 @@ export default class FireInstance extends BaseInstance {
         for (let user of this.users) {
             user.send('next_round', {
                 ninja: this.currentSeat,
-                deck: this.ninjas[user.id].dealt,
+                deck: this.ninjas[user.id].dealCards(),
                 spin: {
                     amount: this.spinAmount,
                     cw: this.moveClockwise,

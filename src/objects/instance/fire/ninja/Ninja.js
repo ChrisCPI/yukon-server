@@ -15,7 +15,11 @@ export default class Ninja {
 
         this.energy = 6
 
+        this.state = 0
+
         this.dealtSize = 5
+
+        this.readyForNext = true
 
         // Player has already dealt this turn
         this.hasDealt = false
@@ -53,7 +57,7 @@ export default class Ninja {
     }
 
     getLimitedDealt(element) {
-        return this.dealt.filter(dealt => dealt.element != element)
+        return this.dealt.filter(dealt => dealt.element == element)
     }
 
     dealCards(dealPowers = true) {
@@ -100,6 +104,7 @@ export default class Ninja {
     resetTurn() {
         this.pick = null
         this.hasDealt = false
+        this.state = 0
     }
 
     send(action, args = {}) {
