@@ -42,6 +42,7 @@ export default class FireInstance extends BaseInstance {
         this.handleSpinnerSelect = this.handleSpinnerSelect.bind(this)
         this.handleBoardSelect = this.handleBoardSelect.bind(this)
         this.handlePickCard = this.handlePickCard.bind(this)
+        this.handleChooseElement = this.handleChooseElement.bind(this)
     }
 
     init() {
@@ -74,6 +75,7 @@ export default class FireInstance extends BaseInstance {
         user.events.on('spinner_select', this.handleSpinnerSelect)
         user.events.on('board_select', this.handleBoardSelect)
         user.events.on('pick_card', this.handlePickCard)
+        user.events.on('choose_element', this.handleChooseElement)
 
         super.addListeners(user)
     }
@@ -82,6 +84,7 @@ export default class FireInstance extends BaseInstance {
         user.events.off('spinner_select', this.handleSpinnerSelect)
         user.events.off('board_select', this.handleBoardSelect)
         user.events.off('pick_card', this.handlePickCard)
+        user.events.off('choose_element', this.handleChooseElement)
 
         super.removeListeners(user)
     }
@@ -167,18 +170,14 @@ export default class FireInstance extends BaseInstance {
                 this.chooseOpponent(this.getNinjaSeat(opponent))
             }
         } else if (['f', 'w', 's'].includes(element)) {
-            this.battle.state = 3
-            this.battle.element = element
-            this.battle.seats = Object.values(this.ninjas).map(n => this.getNinjaSeat(n))
-
-            this.send('start_battle', { type: element, seats: this.battle.seats })
+            this.startElementalBattle(element)
             // Todo
         } else if (element === 'c') {
             if (autoPlay) {
                 // Todo
             } else {
                 this.battle.state = 1
-                // Todo
+                ninja.send('choose_element')
             }
         } else if (element === 'b') {
             this.battle.element = element
@@ -192,6 +191,26 @@ export default class FireInstance extends BaseInstance {
                 // Todo
             }
         }
+    }
+
+    startElementalBattle(element) {
+        this.battle.state = 3
+        this.battle.element = element
+        this.battle.seats = Object.values(this.ninjas).map(n => this.getNinjaSeat(n))
+
+        this.send('start_battle', { type: element, seats: this.battle.seats })
+    }
+
+    handleChooseElement(args, user) {
+        if (!hasProps(args, 'element')) return
+
+        if (!['f', 'w', 's'].includes(args.element)) return
+
+        if (this.battle.state !== 1) return
+
+        if (this.getSeat(user) !== this.currentSeat) return
+
+        this.startElementalBattle(args.element)
     }
 
     handlePickCard(args, user) {
