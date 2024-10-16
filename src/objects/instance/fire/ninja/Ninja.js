@@ -11,7 +11,7 @@ export default class Ninja {
 
         this.deck = []
         this.dealt = []
-        this.pick
+        this.pick = null
 
         this.energy = 6
 
@@ -43,6 +43,10 @@ export default class Ninja {
     }
 
     hasPlayableCards(element) {
+        if (element === 'b') {
+            return true
+        }
+
         let filtered = this.getLimitedDealt(element)
 
         return Boolean(filtered.length)
@@ -85,8 +89,6 @@ export default class Ninja {
 
     pickCard(card) {
         this.pick = this.getPick(card)
-
-        this.opponent.send('pick_card', { card: this.dealt.indexOf(this.pick) })
 
         this.dealt.splice(this.dealt.indexOf(this.pick), 1)
     }

@@ -26,10 +26,7 @@ export default class FireInstance extends BaseInstance {
             's', 'f', 'w', 'b', 's',
             'w', 'f', 'c', 'w', 's', 'f']
 
-        this.tileIds = [...defaultTiles]
-
         this.itemAwards = [6025, 4120, 2013, 1086, 3032]
-        this.postcardAwards = { 1: 177, 5: 178, 9: 179 }
 
         this.currentSeat = 0
 
@@ -37,12 +34,14 @@ export default class FireInstance extends BaseInstance {
 
         this.battle = {
             state: 0,
-            type: null,
-            element: null
+            type: 1,
+            element: null,
+            seats: []
         }
 
         this.handleSpinnerSelect = this.handleSpinnerSelect.bind(this)
         this.handleBoardSelect = this.handleBoardSelect.bind(this)
+        this.handlePickCard = this.handlePickCard.bind(this)
     }
 
     init() {
@@ -62,6 +61,11 @@ export default class FireInstance extends BaseInstance {
         return this.ninjas[user.id]
     }
 
+    getNinjaSeat(ninja) {
+        const n = this.ninjas[ninja.user.id]
+        return this.getSeat(n.user)
+    }
+
     get currentNinja() {
         return this.getNinja(this.currentSeat)
     }
@@ -69,6 +73,7 @@ export default class FireInstance extends BaseInstance {
     addListeners(user) {
         user.events.on('spinner_select', this.handleSpinnerSelect)
         user.events.on('board_select', this.handleBoardSelect)
+        user.events.on('pick_card', this.handlePickCard)
 
         super.addListeners(user)
     }
@@ -76,6 +81,7 @@ export default class FireInstance extends BaseInstance {
     removeListeners(user) {
         user.events.off('spinner_select', this.handleSpinnerSelect)
         user.events.off('board_select', this.handleBoardSelect)
+        user.events.off('pick_card', this.handlePickCard)
 
         super.removeListeners(user)
     }
@@ -111,7 +117,7 @@ export default class FireInstance extends BaseInstance {
 
         this.currentNinja.hasSelectedSpinner = true
 
-        this.send('spinner_select', { tabId: args.tabId })
+        this.send('spinner_select', { tabId: args.tabId }, user)
     }
 
     handleBoardSelect(args, user) {
@@ -138,9 +144,9 @@ export default class FireInstance extends BaseInstance {
         if (!autoPlay || this.battle.state === 0) {
             ninja.tile = tile
 
-            this.send('board_select', { ninja: this.currentSeat, tile: tile }, [])
+            this.send('board_select', { ninja: this.currentSeat, tile: tile })
 
-            this.battle.type = 'bt'
+            this.battle.type = 1
         }
 
         const element = this.board[tile]
@@ -158,12 +164,14 @@ export default class FireInstance extends BaseInstance {
                 // Todo
             } else {
                 const opponent = tileOccupants.find(n => n.user.id !== ninja.user.id)
-                // Todo
+                this.chooseOpponent(this.getNinjaSeat(opponent))
             }
         } else if (['f', 'w', 's'].includes(element)) {
             this.battle.state = 3
             this.battle.element = element
+            this.battle.seats = Object.values(this.ninjas).map(n => this.getNinjaSeat(n))
 
+            this.send('start_battle', { type: element, seats: this.battle.seats })
             // Todo
         } else if (element === 'c') {
             if (autoPlay) {
@@ -186,11 +194,42 @@ export default class FireInstance extends BaseInstance {
         }
     }
 
+    handlePickCard(args, user) {
+        if (!hasProps(args, 'card')) return
+
+        if (!isNumber(args.card)) return
+
+        const ninja = this.ninjas[user.id]
+
+        if (!ninja.isInDealt(args.card) || ninja.pick) return
+
+        const pick = ninja.getPick(args.card)
+
+        if (this.battle.element !== 'b' && pick.element != this.battle.element) {
+            if (ninja.hasPlayableCards(this.battle.element)) {
+                return
+            }
+        }
+
+        ninja.pickCard(args.card)
+
+        this.send('opponent_pick_card', { seat: this.getNinjaSeat(ninja) }, user)
+    }
+
+    chooseOpponent(seat) {
+        if (seat !== this.currentSeat) {
+
+        }
+    }
+
     getNinjasOnTile(tile) {
         return Object.values(this.ninjas).filter(ninja => ninja.tile === tile)
     }
 
     nextRound() {
+        if (this.currentNinja) {
+            this.currentNinja.hasSelectedSpinner = false
+        }
         const index = this.currentSeat
         let nextNinja = (index + 1 >= Object.keys(this.ninjas).length) ? 0 : index + 1
         this.currentSeat = nextNinja
