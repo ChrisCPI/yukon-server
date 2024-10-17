@@ -2,6 +2,8 @@ import BaseInstance from '../BaseInstance'
 
 import Ninja from './ninja/Ninja'
 
+import Rules from '../card/Rules'
+
 import { hasProps, isInRange, isNumber } from '@utils/validation'
 
 import { between } from '@utils/math'
@@ -49,6 +51,10 @@ export default class FireInstance extends BaseInstance {
         this.handleChooseElement = this.handleChooseElement.bind(this)
     }
 
+    get allNinjas() {
+        return Object.values(this.ninjas)
+    }
+
     init() {
         super.init()
 
@@ -66,7 +72,7 @@ export default class FireInstance extends BaseInstance {
         return this.ninjas[user.id]
     }
 
-    getNinjaSeat(ninja) {
+    getSeatByNinja(ninja) {
         const n = this.ninjas[ninja.user.id]
         return this.getSeat(n.user)
     }
@@ -122,7 +128,7 @@ export default class FireInstance extends BaseInstance {
 
         ninja.readyForNext = true
 
-        if (Object.values(this.ninjas).every(n => n.readyForNext === true)) {
+        if (this.allNinjas.every(n => n.readyForNext === true)) {
             this.nextRound()
             this.sendNextRound()
         }
@@ -183,12 +189,13 @@ export default class FireInstance extends BaseInstance {
             
             if (autoPlay) {
                 tileOccupants = tileOccupants.filter(n => n.user.id !== ninja.user.id)
-                // Todo
+                const opponent = tileOccupants(between(0, tileOccupants.length - 1))
+                this.chooseOpponent(this.getSeatByNinja(opponent))
             } else if (tileOccupants.length > 2) {
                 // Todo
             } else {
                 const opponent = tileOccupants.find(n => n.user.id !== ninja.user.id)
-                this.chooseOpponent(this.getNinjaSeat(opponent))
+                this.chooseOpponent(this.getSeatByNinja(opponent))
             }
         } else if (['f', 'w', 's'].includes(element)) {
             this.startElementalBattle(element)
@@ -204,10 +211,11 @@ export default class FireInstance extends BaseInstance {
             this.battle.element = element
             this.battle.state = 2
 
-            const ninjas = Object.values(this.ninjas).length
+            const ninjas = this.allNinjas.length
 
             if (autoPlay || ninjas === 2) {
-                // Todo
+                const opponent = this.allNinjas.find(n => this.getSeatByNinja(n) !== this.currentSeat)
+                this.chooseOpponent(this.getSeatByNinja(opponent))
             } else if (ninjas > 2) {
                 // Todo
             }
@@ -217,7 +225,7 @@ export default class FireInstance extends BaseInstance {
     startElementalBattle(element) {
         this.battle.state = 3
         this.battle.element = element
-        this.battle.seats = Object.values(this.ninjas).map(n => this.getNinjaSeat(n))
+        this.battle.seats = this.allNinjas.map(n => this.getSeatByNinja(n))
 
         this.send('start_battle', { type: element, seats: this.battle.seats })
     }
@@ -239,6 +247,8 @@ export default class FireInstance extends BaseInstance {
 
         if (!isNumber(args.card)) return
 
+        if (this.battle.state !== 3) return
+
         if (!this.battle.seats.includes(this.getSeat(user))) return
 
         const ninja = this.ninjas[user.id]
@@ -255,7 +265,7 @@ export default class FireInstance extends BaseInstance {
 
         ninja.pickCard(args.card)
 
-        this.send('opponent_pick_card', { seat: this.getNinjaSeat(ninja) }, user)
+        this.send('opponent_pick_card', { seat: this.getSeatByNinja(ninja) }, user)
 
         if (this.battle.seats.every(seat => this.getNinja(seat).pick !== null)) {
             this.judgeBattle()
@@ -264,21 +274,26 @@ export default class FireInstance extends BaseInstance {
 
     chooseOpponent(seat) {
         if (seat !== this.currentSeat) {
+            this.battle.type = 2
+            this.battle.state = 3
 
+            this.battle.seats = [this.currentSeat, seat]
+
+            this.send('start_battle', { type: this.battle.element, seats: this.battle.seats })
         }
     }
 
     getNinjasOnTile(tile) {
-        return Object.values(this.ninjas).filter(ninja => ninja.tile === tile)
+        return this.allNinjas.filter(ninja => ninja.tile === tile)
     }
 
     judgeBattle() {
         // Clear timeout
         this.resolveBattle()
 
-        for (let ninja of Object.values(this.ninjas)) {
+        for (let ninja of this.allNinjas) {
             if (ninja.energy === 0) {
-                this.podium[this.getNinjaSeat(ninja)] = this.finishPosition
+                this.podium[this.getSeatByNinja(ninja)] = this.finishPosition
                 this.finishPosition -= 1
             }
         }
@@ -298,7 +313,7 @@ export default class FireInstance extends BaseInstance {
             }
         })
 
-        for (let ninja of Object.values(this.ninjas)) {
+        for (let ninja of this.allNinjas) {
             ninja.send('judge_battle', {
                 ninjas: data,
                 battleType: this.battle.element,
@@ -308,7 +323,7 @@ export default class FireInstance extends BaseInstance {
             ninja.readyForNext = false
 
             if (ninja.energy === 0 || this.finishPosition === 1) {
-                const playerFinish = this.podium[this.getNinjaSeat(ninja)]
+                const playerFinish = this.podium[this.getSeatByNinja(ninja)]
 
                 // update progress
 
@@ -350,9 +365,51 @@ export default class FireInstance extends BaseInstance {
                     ninja.energy -= 1
                 }
             }
-        } else if (this.battle.state === 2) {
-            // Todo
+        } else if (this.battle.type === 2) {
+            const [seat1, seat2] = this.battle.seats
+            const pick1 = this.getNinja(seat1).pick
+            const pick2 = this.getNinja(seat2).pick
+
+            const winSeat = this.getWinningSeat(pick1, pick2)
+
+            let winNinja
+            let loseNinja
+
+            if (winSeat === -1) {
+                winNinja = this.getNinja(0)
+                loseNinja = this.getNinja(1)
+
+                winNinja.state = 2
+                loseNinja.state = 2
+            } else {
+                winNinja = this.getNinja(this.battle.seats[winSeat])
+                loseNinja = this.getNinja(this.battle.seats[winSeat === 1 ? 0 : 1])
+
+                winNinja.state = 4
+                loseNinja.state = 1
+
+                winNinja.energy += 1
+                loseNinja.energy -= 1
+            }
+
+            this.battle.element = winSeat === 0 ? pick1.element : pick2.element
         }
+    }
+
+    getWinningSeat(first, second) {
+        if (first.element != second.element) return this.compareElements(first, second)
+
+        if (first.value > second.value) return 0
+
+        if (second.value > first.value) return 1
+
+        return -1
+    }
+
+    compareElements(first, second) {
+        if (Rules.elements[first.element] == second.element) return 0
+
+        return 1
     }
 
     nextRound() {
@@ -374,7 +431,7 @@ export default class FireInstance extends BaseInstance {
             this.moveCounterClockwise += 16
         }
 
-        for (let ninja of Object.values(this.ninjas)) {
+        for (let ninja of this.allNinjas) {
             ninja.resetTurn()
         }
     }
