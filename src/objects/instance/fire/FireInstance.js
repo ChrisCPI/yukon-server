@@ -185,7 +185,7 @@ export default class FireInstance extends BaseInstance {
 
         if (tileOccupants.length > 1) {
             this.battle.state = 2
-            this.battle.element = element
+            this.battle.element = 'b'
             
             if (autoPlay) {
                 tileOccupants = tileOccupants.filter(n => n.user.id !== ninja.user.id)
