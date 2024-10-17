@@ -9,7 +9,11 @@ import { hasProps, isInRange, isNumber } from '@utils/validation'
 import { between } from '@utils/math'
 
 
+const elements = ['f', 'w', 's']
+
 const defaultTiles = [0, 8, 4, 12]
+
+const autoplayWait = 22000
 
 export default class FireInstance extends BaseInstance {
 
@@ -119,6 +123,61 @@ export default class FireInstance extends BaseInstance {
         super.start()
     }
 
+    setChooseBoardTimeout() {
+        this.chooseBoardTimeout = setTimeout(() => {
+            this.autoChooseBoard()
+            this.chooseBoardTimeout = null
+        }, autoplayWait)
+    }
+
+    setChooseCardTimeout() {
+        if (this.chooseBoardTimeout) {
+            this.clearChooseBoardTimeout()
+        }
+
+        this.chooseCardTimeout = setTimeout(() => {
+            this.autoChooseCard()
+            this.chooseCardTimeout = null
+        }, autoplayWait)
+    }
+
+    clearChooseBoardTimeout() {
+        clearTimeout(this.chooseBoardTimeout)
+        this.chooseBoardTimeout = null
+    }
+
+    clearChooseCardTimeout() {
+        clearTimeout(this.chooseCardTimeout)
+        this.chooseCardTimeout = null
+    }
+
+    autoChooseBoard() {
+        if (!this.currentNinja.hasSelectedSpinner) {
+            this.tabId = 1
+            this.currentNinja.hasSelectedSpinner = true
+            this.send('spinner_select', { tabId: this.tabId })
+        }
+
+        const tile = Boolean(between(0,1)) ? this.moveClockwise : this.moveCounterClockwise
+        this.selectBoard(tile, true)
+    }
+
+    autoChooseCard() {
+        for (let seat of this.battle.seats) {
+            const ninja = this.getNinja(seat)
+
+            if (!ninja.pick) {
+                const dealt = ninja.hasPlayableCards(this.battle.element) && this.battle.element !== 'b'
+                    ? ninja.dealt.filter(card => card.element == this.battle.element)
+                    : ninja.dealt
+                
+                const card = dealt[between(0, dealt.length - 1)]
+                ninja.send('auto_pick_card', { card: card.id })
+                this.pickCard(ninja, card.id)
+            }
+        }
+    }
+
     handleNinjaReady(args, user) {
         if (this.battle.state !== 0) return
 
@@ -171,17 +230,19 @@ export default class FireInstance extends BaseInstance {
     selectBoard(tile, autoPlay = false) {
         const ninja = this.currentNinja
 
-        if (!autoPlay || this.battle.state === 0) {
-            ninja.tile = tile
+        ninja.tile = tile
 
-            this.send('board_select', { ninja: this.currentSeat, tile: tile })
-
-            this.battle.type = 1
+        if (autoPlay) {
+            ninja.send('auto_board_select', { tile: tile })
         }
+
+        this.send('board_select', { ninja: this.currentSeat, tile: tile })
+
+        this.battle.type = 1
 
         const element = this.board[tile]
 
-        const tileOccupants = this.getNinjasOnTile(tile)
+        let tileOccupants = this.getNinjasOnTile(tile)
 
         if (tileOccupants.length > 1) {
             this.battle.state = 2
@@ -189,7 +250,7 @@ export default class FireInstance extends BaseInstance {
             
             if (autoPlay) {
                 tileOccupants = tileOccupants.filter(n => n.user.id !== ninja.user.id)
-                const opponent = tileOccupants(between(0, tileOccupants.length - 1))
+                const opponent = tileOccupants[between(0, tileOccupants.length - 1)]
                 this.chooseOpponent(this.getSeatByNinja(opponent))
             } else if (tileOccupants.length > 2) {
                 // Todo
@@ -197,12 +258,12 @@ export default class FireInstance extends BaseInstance {
                 const opponent = tileOccupants.find(n => n.user.id !== ninja.user.id)
                 this.chooseOpponent(this.getSeatByNinja(opponent))
             }
-        } else if (['f', 'w', 's'].includes(element)) {
+        } else if (elements.includes(element)) {
             this.startElementalBattle(element)
-            // Todo
         } else if (element === 'c') {
             if (autoPlay) {
-                // Todo
+                const randomElement = elements[between(0, 2)]
+                this.startElementalBattle(randomElement)
             } else {
                 this.battle.state = 1
                 ninja.send('choose_element')
@@ -227,13 +288,15 @@ export default class FireInstance extends BaseInstance {
         this.battle.element = element
         this.battle.seats = this.allNinjas.map(n => this.getSeatByNinja(n))
 
+        this.setChooseCardTimeout()
+
         this.send('start_battle', { type: element, seats: this.battle.seats })
     }
 
     handleChooseElement(args, user) {
         if (!hasProps(args, 'element')) return
 
-        if (!['f', 'w', 's'].includes(args.element)) return
+        if (!elements.includes(args.element)) return
 
         if (this.battle.state !== 1) return
 
@@ -263,9 +326,13 @@ export default class FireInstance extends BaseInstance {
             }
         }
 
-        ninja.pickCard(args.card)
+        this.pickCard(ninja, args.card)
+    }
 
-        this.send('opponent_pick_card', { seat: this.getSeatByNinja(ninja) }, user)
+    pickCard(ninja, card) {
+        ninja.pickCard(card)
+
+        this.send('opponent_pick_card', { seat: this.getSeatByNinja(ninja) }, ninja.user)
 
         if (this.battle.seats.every(seat => this.getNinja(seat).pick !== null)) {
             this.judgeBattle()
@@ -279,6 +346,8 @@ export default class FireInstance extends BaseInstance {
 
             this.battle.seats = [this.currentSeat, seat]
 
+            this.setChooseCardTimeout()
+
             this.send('start_battle', { type: this.battle.element, seats: this.battle.seats })
         }
     }
@@ -288,7 +357,7 @@ export default class FireInstance extends BaseInstance {
     }
 
     judgeBattle() {
-        // Clear timeout
+        this.clearChooseCardTimeout()
         this.resolveBattle()
 
         for (let ninja of this.allNinjas) {
@@ -437,6 +506,8 @@ export default class FireInstance extends BaseInstance {
     }
 
     sendNextRound() {
+        this.setChooseBoardTimeout()
+
         for (let user of this.users) {
             user.send('next_round', {
                 ninja: this.currentSeat,
