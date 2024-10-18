@@ -238,15 +238,19 @@ export default class FireInstance extends BaseInstance {
     selectBoard(tile, autoPlay = false) {
         const ninja = this.currentNinja
 
-        ninja.tile = tile
+        if (!autoPlay || this.battle.state === 0) {
+            ninja.tile = tile
 
-        if (autoPlay) {
-            ninja.send('auto_board_select', { tile: tile })
+            if (autoPlay) {
+                ninja.send('auto_board_select', { tile: tile })
+            }
+    
+            this.send('board_select', { ninja: this.currentSeat, tile: tile })
+    
+            this.battle.type = 1
+        } else {
+            tile = ninja.tile
         }
-
-        this.send('board_select', { ninja: this.currentSeat, tile: tile })
-
-        this.battle.type = 1
 
         const element = this.board[tile]
 
