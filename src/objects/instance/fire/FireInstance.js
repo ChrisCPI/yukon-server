@@ -169,12 +169,12 @@ export default class FireInstance extends BaseInstance {
             const ninja = this.getNinja(seat)
 
             if (!ninja.pick) {
-                this.pickCard(ninja)
+                this.autoPickCard(ninja)
             }
         }
     }
 
-    pickCard(ninja) {
+    autoPickCard(ninja) {
         const dealt = ninja.hasPlayableCards(this.battle.element) && this.battle.element !== 'b'
             ? ninja.dealt.filter(card => card.element == this.battle.element)
             : ninja.dealt
@@ -571,7 +571,7 @@ export default class FireInstance extends BaseInstance {
                     this.clearChooseBoardTimeout()
                     this.autoChooseBoard()
                 } else if (!ninja.pick && this.battle.state === 3) {
-                    this.pickCard(ninja)
+                    this.autoPickCard(ninja)
                 }
             }
         }
