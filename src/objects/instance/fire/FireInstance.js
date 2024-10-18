@@ -63,7 +63,7 @@ export default class FireInstance extends BaseInstance {
         super.init()
 
         for (let user of this.users) {
-            this.ninjas[user.id] = new Ninja(user, this)
+            this.ninjas[user.id] = new Ninja(user)
             this.ninjas[user.id].tile = defaultTiles[this.getSeat(user)]
         }
 

@@ -5,15 +5,14 @@ import { cards } from '@data/data'
 
 export default class Ninja {
 
-    constructor(user = null, game = null) {
+    constructor(user = null) {
         this.user = user
-        this.game = game
 
         this.deck = []
         this.dealt = []
         this.pick = null
 
-        this.energy = 1
+        this.energy = 6
 
         this.state = 0
 
@@ -27,10 +26,6 @@ export default class Ninja {
         this.hasSelectedSpinner = false
 
         if (user) this.setDeck()
-    }
-
-    get opponents() {
-        return Object.values(this.game.ninjas).filter(ninja => ninja.user.id !== this.user.id)
     }
 
     setDeck() {
