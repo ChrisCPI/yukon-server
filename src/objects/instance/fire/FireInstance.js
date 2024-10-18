@@ -383,7 +383,7 @@ export default class FireInstance extends BaseInstance {
         for (let ninja of this.allNinjas) {
             if (ninja.energy === 0) {
                 this.podium[this.getSeatByNinja(ninja)] = this.finishPosition
-                this.finishPosition -= 1
+                this.finishPosition--
             }
         }
 
@@ -403,21 +403,22 @@ export default class FireInstance extends BaseInstance {
         })
 
         for (let ninja of this.allNinjas) {
-            ninja.send('judge_battle', {
-                ninjas: data,
-                battleType: this.battle.element,
-                positions: this.podium
-            })
-
             ninja.readyForNext = false
 
             if (ninja.energy === 0 || this.finishPosition === 1) {
-                const playerFinish = this.podium[this.getSeatByNinja(ninja)]
+                const finish = this.podium[this.getSeatByNinja(ninja)]
 
                 // update progress
 
-                // remove penguin and send game over
+                ninja.send('finish', { finish: finish })
+                this.remove(ninja.user, false)
             }
+
+            ninja.send('judge_battle', {
+                ninjas: data,
+                battleType: this.battle.element,
+                podium: this.podium
+            })
         }
 
         this.battle.state = 0
@@ -552,7 +553,7 @@ export default class FireInstance extends BaseInstance {
 
         if (quit) {
             this.podium[seat] = this.finishPosition
-            this.finishPosition -= 1
+            this.finishPosition--
 
             const allQuit = this.allNinjas.length === 1
 
