@@ -45,7 +45,7 @@ export default class FireInstance extends BaseInstance {
             seats: []
         }
 
-        this.podium = new Array(this.users).fill(0)
+        this.podium = new Array(this.users.length).fill(0)
         this.finishPosition = this.users.length
 
         this.handleNinjaReady = this.handleNinjaReady.bind(this)

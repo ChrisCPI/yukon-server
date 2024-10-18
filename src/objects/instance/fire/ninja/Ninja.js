@@ -13,7 +13,7 @@ export default class Ninja {
         this.dealt = []
         this.pick = null
 
-        this.energy = 6
+        this.energy = 1
 
         this.state = 0
 
