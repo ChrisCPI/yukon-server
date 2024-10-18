@@ -91,6 +91,7 @@ export default class FireInstance extends BaseInstance {
         user.events.on('board_select', this.handleBoardSelect)
         user.events.on('pick_card', this.handlePickCard)
         user.events.on('choose_element', this.handleChooseElement)
+        user.events.on('choose_opponent', this.handleChooseOpponent)
 
         super.addListeners(user)
     }
@@ -101,6 +102,7 @@ export default class FireInstance extends BaseInstance {
         user.events.off('board_select', this.handleBoardSelect)
         user.events.off('pick_card', this.handlePickCard)
         user.events.off('choose_element', this.handleChooseElement)
+        user.events.off('choose_opponent', this.handleChooseOpponent)
 
         super.removeListeners(user)
     }
@@ -257,7 +259,8 @@ export default class FireInstance extends BaseInstance {
                 const opponent = tileOccupants[between(0, tileOccupants.length - 1)]
                 this.chooseOpponent(this.getSeatByNinja(opponent))
             } else if (tileOccupants.length > 2) {
-                // Todo
+                this.battle.state = 2
+                ninja.send('choose_opponent')
             } else {
                 const opponent = tileOccupants.find(n => n.user.id !== ninja.user.id)
                 this.chooseOpponent(this.getSeatByNinja(opponent))
@@ -282,7 +285,8 @@ export default class FireInstance extends BaseInstance {
                 const opponent = this.allNinjas.find(n => this.getSeatByNinja(n) !== this.currentSeat)
                 this.chooseOpponent(this.getSeatByNinja(opponent))
             } else if (ninjas > 2) {
-                // Todo
+                this.battle.state = 2
+                ninja.send('choose_opponent')
             }
         }
     }
@@ -307,6 +311,18 @@ export default class FireInstance extends BaseInstance {
         if (this.getSeat(user) !== this.currentSeat) return
 
         this.startElementalBattle(args.element)
+    }
+
+    handleChooseOpponent(args, user) {
+        if (!hasProps(args, 'seat')) return
+
+        if (!isInRange(args.seat, 0, this.users.length - 1)) return
+
+        if (this.battle.state !== 2) return
+
+        if (this.getSeat(user) !== this.currentSeat) return
+
+        this.chooseOpponent(args.seat)
     }
 
     handlePickCard(args, user) {
@@ -545,7 +561,7 @@ export default class FireInstance extends BaseInstance {
             if (allQuit) {
                 this.clearChooseBoardTimeout()
                 this.clearChooseCardTimeout()
-                
+
                 const remainingNinja = this.allNinjas.find(n => n.user.id !== user.id)
 
                 this.remove(remainingNinja.user, false)
