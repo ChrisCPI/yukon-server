@@ -167,15 +167,19 @@ export default class FireInstance extends BaseInstance {
             const ninja = this.getNinja(seat)
 
             if (!ninja.pick) {
-                const dealt = ninja.hasPlayableCards(this.battle.element) && this.battle.element !== 'b'
-                    ? ninja.dealt.filter(card => card.element == this.battle.element)
-                    : ninja.dealt
-                
-                const card = dealt[between(0, dealt.length - 1)]
-                ninja.send('auto_pick_card', { card: card.id })
-                this.pickCard(ninja, card.id)
+                this.pickCard(ninja)
             }
         }
+    }
+
+    pickCard(ninja) {
+        const dealt = ninja.hasPlayableCards(this.battle.element) && this.battle.element !== 'b'
+            ? ninja.dealt.filter(card => card.element == this.battle.element)
+            : ninja.dealt
+    
+        const card = dealt[between(0, dealt.length - 1)]
+        ninja.send('auto_pick_card', { card: card.id })
+        this.pickCard(ninja, card.id)
     }
 
     handleNinjaReady(args, user) {
@@ -518,6 +522,41 @@ export default class FireInstance extends BaseInstance {
                     ccw: this.moveCounterClockwise
                 }
             })
+        }
+    }
+
+    remove(user, quit = true) {
+        const seat = this.getSeat(user)
+
+        super.remove(user)
+
+        const ninja = this.ninjas[user.id]
+
+        delete this.ninjas[user.id]
+
+        if (quit) {
+            this.podium[seat] = this.finishPosition
+            this.finishPosition -= 1
+
+            const allQuit = this.allNinjas.length === 1
+
+            this.send('player_quit', { seat: seat, allQuit: allQuit })
+
+            if (allQuit) {
+                this.clearChooseBoardTimeout()
+                this.clearChooseCardTimeout()
+                
+                const remainingNinja = this.allNinjas.find(n => n.user.id !== user.id)
+
+                this.remove(remainingNinja.user, false)
+            } else if (this.allNinjas.length >= 2) {
+                if (this.getSeatByNinja(ninja) === this.currentSeat && isInRange(this.battle.state, 0, 2)) {
+                    this.clearChooseBoardTimeout()
+                    this.autoChooseBoard()
+                } else if (!ninja.pick && this.battle.state === 3) {
+                    this.pickCard(ninja)
+                }
+            }
         }
     }
 
