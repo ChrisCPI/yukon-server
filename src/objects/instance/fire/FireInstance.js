@@ -34,6 +34,8 @@ export default class FireInstance extends BaseInstance {
 
         this.itemAwards = [6025, 4120, 2013, 1086, 3032]
 
+        this.moveTiles = []
+
         this.currentSeat = 0
 
         this.tabId = null
@@ -160,7 +162,7 @@ export default class FireInstance extends BaseInstance {
             this.send('spinner_select', { tabId: this.tabId })
         }
 
-        const tile = Boolean(between(0,1)) ? this.moveClockwise : this.moveCounterClockwise
+        const tile = this.moveTiles[between(0, 1)]
         this.selectBoard(tile, true)
     }
 
@@ -228,7 +230,7 @@ export default class FireInstance extends BaseInstance {
 
         const tile = args.spaceId
 
-        if (tile !== this.moveClockwise && tile !== this.moveCounterClockwise) return
+        if (!this.moveTiles.includes(tile)) return
 
         this.selectBoard(tile)
     }
@@ -514,12 +516,15 @@ export default class FireInstance extends BaseInstance {
         this.spinAmount = between(1, 6)
 
         const ninjaPosition = this.currentNinja.tile
-        this.moveClockwise = (ninjaPosition + this.spinAmount) % 16
-        this.moveCounterClockwise = (ninjaPosition - this.spinAmount) % 16
 
-        if (this.moveCounterClockwise < 0) {
-            this.moveCounterClockwise += 16
+        let moveCW = (ninjaPosition + this.spinAmount) % 16
+        let moveCCW = (ninjaPosition - this.spinAmount) % 16
+
+        if (moveCCW < 0) {
+            moveCCW += 16
         }
+
+        this.moveTiles = [moveCW, moveCCW]
 
         for (let ninja of this.allNinjas) {
             ninja.resetTurn()
@@ -535,8 +540,7 @@ export default class FireInstance extends BaseInstance {
                 deck: this.ninjas[user.id].dealCards(),
                 spin: {
                     amount: this.spinAmount,
-                    cw: this.moveClockwise,
-                    ccw: this.moveCounterClockwise
+                    tiles: this.moveTiles
                 }
             })
         }
