@@ -55,6 +55,7 @@ export default class FireInstance extends BaseInstance {
         this.handleBoardSelect = this.handleBoardSelect.bind(this)
         this.handlePickCard = this.handlePickCard.bind(this)
         this.handleChooseElement = this.handleChooseElement.bind(this)
+        this.handleChooseOpponent = this.handleChooseOpponent.bind(this)
     }
 
     get allNinjas() {
@@ -79,11 +80,14 @@ export default class FireInstance extends BaseInstance {
     }
 
     getSeatByNinja(ninja) {
-        const n = this.ninjas[ninja.user.id]
-        return this.getSeat(n.user)
+        return this.getSeat(ninja.user)
     }
 
     get currentNinja() {
+        if (this.users[this.currentSeat] === null) {
+            return null
+        }
+
         return this.getNinja(this.currentSeat)
     }
 
@@ -472,8 +476,8 @@ export default class FireInstance extends BaseInstance {
             let loseNinja
 
             if (winSeat === -1) {
-                winNinja = this.getNinja(0)
-                loseNinja = this.getNinja(1)
+                winNinja = this.getNinja(seat1)
+                loseNinja = this.getNinja(seat2)
 
                 winNinja.state = 2
                 loseNinja.state = 2
@@ -513,7 +517,13 @@ export default class FireInstance extends BaseInstance {
             this.currentNinja.hasSelectedSpinner = false
         }
         const index = this.currentSeat
-        let nextNinja = (index + 1 >= Object.keys(this.ninjas).length) ? 0 : index + 1
+        let nextNinja = (index + 1 >= this.allNinjas.length) ? 0 : index + 1
+
+        while (this.users[nextNinja] === null) {
+            index++
+            nextNinja = (index + 1 >= this.allNinjas.length) ? 0 : index + 1
+        }
+
         this.currentSeat = nextNinja
 
         this.tabId = null
@@ -575,7 +585,7 @@ export default class FireInstance extends BaseInstance {
 
                 this.remove(remainingNinja.user, false)
             } else if (this.allNinjas.length >= 2) {
-                if (this.getSeatByNinja(ninja) === this.currentSeat && isInRange(this.battle.state, 0, 2)) {
+                if (seat === this.currentSeat && isInRange(this.battle.state, 0, 2)) {
                     this.clearChooseBoardTimeout()
                     this.autoChooseBoard()
                 } else if (!ninja.pick && this.battle.state === 3) {
