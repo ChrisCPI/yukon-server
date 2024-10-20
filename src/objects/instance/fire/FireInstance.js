@@ -516,7 +516,7 @@ export default class FireInstance extends BaseInstance {
         if (this.currentNinja) {
             this.currentNinja.hasSelectedSpinner = false
         }
-        const index = this.currentSeat
+        let index = this.currentSeat
         let nextNinja = (index + 1 >= this.allNinjas.length) ? 0 : index + 1
 
         while (this.users[nextNinja] === null) {
@@ -548,7 +548,9 @@ export default class FireInstance extends BaseInstance {
     sendNextRound() {
         this.setChooseBoardTimeout()
 
-        for (let user of this.users) {
+        let users = this.users.filter(u => u !== null)
+
+        for (let user of users) {
             user.send('next_round', {
                 ninja: this.currentSeat,
                 deck: this.ninjas[user.id].dealCards(),
@@ -585,6 +587,8 @@ export default class FireInstance extends BaseInstance {
 
                 this.remove(remainingNinja.user, false)
             } else if (this.allNinjas.length >= 2) {
+                this.battle.seats = this.battle.seats.filter(s => s !== seat)
+                
                 if (seat === this.currentSeat && isInRange(this.battle.state, 0, 2)) {
                     this.clearChooseBoardTimeout()
                     this.autoChooseBoard()

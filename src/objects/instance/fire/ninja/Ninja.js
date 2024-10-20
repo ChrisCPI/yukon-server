@@ -103,7 +103,9 @@ export default class Ninja {
     }
 
     send(action, args = {}) {
-        this.user.send(action, args)
+        if (this.user) {
+            this.user.send(action, args)
+        }
     }
 
 }
