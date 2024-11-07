@@ -3,25 +3,42 @@ import GamePlugin from '@plugin/GamePlugin'
 import data from '@data/data'
 
 
+const starterDeckId = 821
+const fireDeckId = 8006
+
 export default class Sensei extends GamePlugin {
 
     constructor(handler) {
         super(handler)
 
         this.events = {
-            'add_starter_deck': this.addStarterDeck
+            'add_starter_deck': this.addStarterDeck,
+            'add_fire_deck': this.addFireDeck
         }
-
-        this.starterDeckId = 821
-        this.starterDeck = this.crumbs.items[this.starterDeckId]
     }
 
     addStarterDeck(args, user) {
-        if (user.inventory.includes(this.starterDeckId)) {
+        if (user.inventory.includes(starterDeckId)) {
             return
         }
 
-        const deck = data.decks[this.starterDeckId]
+        this.addDeck(starterDeckId, user)
+    }
+
+    addFireDeck(args, user) {
+        if (user.ninjaRank < 10) {
+            return
+        }
+
+        if (user.inventory.includes(fireDeckId)) {
+            return
+        }
+
+        this.addDeck(fireDeckId, user)
+    }
+
+    addDeck(id, user) {
+        const deck = data.decks[id]
 
         for (const card of deck) {
             if (data.cards[card].powerId === 0) {
@@ -35,8 +52,10 @@ export default class Sensei extends GamePlugin {
 
         user.cards.add(randomPowerCard)
 
-        user.inventory.add(this.starterDeckId)
-        user.send('add_item', { item: this.starterDeckId, name: this.starterDeck.name, slot: 'award', coins: user.coins })
+        const deckItem = this.crumbs.items[id]
+
+        user.inventory.add(id)
+        user.send('add_item', { item: id, name: deckItem.name, slot: 'award', coins: user.coins })
     }
 
 }
