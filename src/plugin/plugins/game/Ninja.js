@@ -1,7 +1,7 @@
 import GamePlugin from '@plugin/GamePlugin'
 
 
-export default class Sensei extends GamePlugin {
+export default class Ninja extends GamePlugin {
 
     constructor(handler) {
         super(handler)

@@ -6,7 +6,7 @@ import data from '@data/data'
 const starterDeckId = 821
 const fireDeckId = 8006
 
-export default class Sensei extends GamePlugin {
+export default class Deck extends GamePlugin {
 
     constructor(handler) {
         super(handler)
