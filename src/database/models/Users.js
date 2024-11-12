@@ -102,6 +102,16 @@ export default class Users extends BaseModel {
                     type: DataTypes.INTEGER(3),
                     allowNull: false,
                     defaultValue: 0
+                },
+                fireRank: {
+                    type: DataTypes.INTEGER(1),
+                    allowNull: false,
+                    defaultValue: 0
+                },
+                fireProgress: {
+                    type: DataTypes.INTEGER(3),
+                    allowNull: false,
+                    defaultValue: 0
                 }
             },
             { sequelize, timestamps: false, tableName: 'users' }

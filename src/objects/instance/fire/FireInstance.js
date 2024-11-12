@@ -24,8 +24,6 @@ export default class FireInstance extends BaseInstance {
 
         this.ninjas = {}
 
-        this.xpPercentageStart = 60
-
         this.rankSpeed = 1
 
         this.board = ['b', 's', 'w', 'f', 'c',
@@ -33,6 +31,21 @@ export default class FireInstance extends BaseInstance {
             'w', 'f', 'c', 'w', 's', 'f']
 
         this.itemAwards = [6025, 4120, 2013, 1086, 3032]
+
+        // WARNING: THIS IS PROBABLY NOT CORRECT
+        /*this.xp = [
+            [9, 3],
+            [12, 6, 3],
+            [15, 9, 6, 3]
+        ]*/
+        this.xp = [
+            [36, 12],
+            [48, 24, 12],
+            [60, 36, 24, 12]
+        ]
+
+        //this.xpThreshold = [0, 25, 50, 100, 150]//[0, 25, 75, 175, 325]
+        this.xpMultiplier = [1, 0.5, 0.25, 0.125]
 
         this.moveTiles = []
 
@@ -418,7 +431,7 @@ export default class FireInstance extends BaseInstance {
             if (ninja.energy === 0 || this.finishPosition === 1) {
                 const finish = this.podium[this.getSeatByNinja(ninja)]
 
-                // update progress
+                this.updateProgress(ninja.user, finish)
 
                 ninja.send('finish', { finish: finish })
                 this.remove(ninja.user, false)
@@ -559,6 +572,39 @@ export default class FireInstance extends BaseInstance {
                     tiles: this.moveTiles
                 }
             })
+        }
+    }
+
+    updateProgress(user, finish) {
+        if (user.fireRank < 4) {
+            let speed = this.xpMultiplier[user.fireRank]
+
+            let increase = this.xp[this.users.length - 2][finish - 1] * speed
+
+            user.update({ fireProgress: user.fireProgress + increase })
+        }
+
+        if (user.fireProgress >= 100) this.rankUp(user)
+    }
+
+    rankUp(user) {
+        let rank = user.fireRank + 1
+
+        if (rank > this.itemAwards.length) return
+
+        this.addAwards(user, rank)
+
+        user.update({ fireRank: rank })
+        user.update({ fireProgress: 0 })
+
+        user.send('award', { rank: user.fireRank })
+    }
+
+    addAwards(user, rank) {
+        let item = this.itemAwards[rank - 1]
+
+        if (!(user.inventory.includes(item))) {
+            user.inventory.add(item)
         }
     }
 
