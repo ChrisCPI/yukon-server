@@ -12,7 +12,17 @@ export default class Ninja extends GamePlugin {
     }
 
     getNinja(args, user) {
-        user.send('get_ninja', { rank: user.ninjaRank, progress: user.ninjaProgress, cards: user.cards })
+        user.send('get_ninja', {
+            rank: user.ninjaRank,
+            progress: user.ninjaProgress,
+            
+            fire: {
+                rank: user.fireRank,
+                progress: user.fireProgress
+            },
+
+            cards: user.cards
+        })
     }
 
 }
