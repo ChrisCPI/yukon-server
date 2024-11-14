@@ -48,6 +48,30 @@
         "game": "card"
     },
     {
+        "id": 200,
+        "roomId": 322,
+        "seats": 2,
+        "game": "card"
+    },
+    {
+        "id": 201,
+        "roomId": 322,
+        "seats": 2,
+        "game": "card"
+    },
+    {
+        "id": 202,
+        "roomId": 322,
+        "seats": 2,
+        "game": "card"
+    },
+    {
+        "id": 203,
+        "roomId": 322,
+        "seats": 2,
+        "game": "card"
+    },
+    {
         "id": 300,
         "roomId": 812,
         "seats": 2,
