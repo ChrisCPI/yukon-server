@@ -3,12 +3,13 @@ import Collection from '../Collection'
 import { cards } from '@data/data'
 
 
+const starterDeckId = 821
+const fireDeckId = 8006
+
 export default class CardCollection extends Collection {
 
     constructor(user, models) {
         super(user, models, 'cards', 'cardId')
-
-        this.starterDeckId = 821
     }
 
     // Owned cards * their quantities
@@ -24,10 +25,16 @@ export default class CardCollection extends Collection {
     }
 
     get hasCards() {
-        const hasStarterDeck = this.user.inventory.includes(this.starterDeckId)
+        const hasStarterDeck = this.user.inventory.includes(starterDeckId)
         const hasCards = this.keys.length > 0
 
         return hasStarterDeck && hasCards
+    }
+
+    get hasFireCards() {
+        const hasFireDeck = this.user.inventory.includes(fireDeckId)
+
+        return hasFireDeck && this.hasCards
     }
 
     getQuantity(card) {

@@ -18,6 +18,10 @@ export default class Waddle {
             return
         }
 
+        if (this.game === 'fire' && !user.cards.hasFireCards) {
+            return
+        }
+
         let seat = this.users.indexOf(null)
         this.users[seat] = user
 
